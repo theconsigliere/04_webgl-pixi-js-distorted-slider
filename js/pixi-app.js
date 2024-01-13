@@ -13,6 +13,8 @@ import img8 from "../img/8.jpg"
 import img9 from "../img/9.jpg"
 import img10 from "../img/10.jpg"
 
+import displacementImage from "../img/displacement-image.png"
+
 class Sketch {
   constructor() {
     this.app = new PIXI.Application({
@@ -39,6 +41,7 @@ class Sketch {
       this.addSlides()
       this.render()
       this.scrollEvent()
+      this.addFilter()
     })
   }
 
@@ -130,6 +133,39 @@ class Sketch {
     })
   }
 
+  addFilter() {
+    this.displacementSprite = PIXI.Sprite.from(displacementImage)
+    this.app.stage.addChild(this.displacementSprite)
+
+    let targetImage = {
+      w: 512,
+      h: 512,
+    }
+
+    let parentScreen = {
+      w: window.innerWidth,
+      h: window.innerHeight,
+    }
+
+    // make the displacement image cover the whole screen
+
+    let cover = fit(targetImage, parentScreen)
+
+    this.displacementSprite.position.set(cover.left, cover.top)
+    this.displacementSprite.scale.set(cover.scale, cover.scale)
+
+    // create filter
+    this.displacementFilter = new PIXI.DisplacementFilter(
+      this.displacementSprite
+    )
+
+    // set Initial distortion
+    this.displacementFilter.scale.x = 0
+
+    // assign filter too whole screen
+    this.container.filters = [this.displacementFilter]
+  }
+
   mouseOut(e) {
     let el = e.currentTarget.children[0].children[0]
 
@@ -143,9 +179,15 @@ class Sketch {
   }
 
   calculatePosition(scroll, position) {
-    let movement = scroll + position
-
-    //
+    // infinite scroll
+    // why modulo?
+    // when the number goes higher than the maximum width, it will start from 0 again
+    // no flickering as we have more than 3 items, as we shifting the flickering one item off the screen
+    let movement =
+      ((scroll + position + this.wholeWidth + this.width + this.margin) %
+        this.wholeWidth) -
+      this.width -
+      this.margin
 
     return movement
   }
@@ -153,6 +195,8 @@ class Sketch {
   render() {
     this.app.ticker.add(() => {
       this.app.renderer.render(this.container)
+
+      this.direction = this.scroll > 0 ? 1 : -1
 
       // lerp interpolation
       this.scroll -= (this.scroll - this.scrollTarget) * 0.1
@@ -162,6 +206,10 @@ class Sketch {
       this.thumbs.forEach((thumb, i) => {
         thumb.position.x = this.calculatePosition(this.scroll, thumb.position.x)
       })
+
+      // faster you scroll more distorted it be
+      this.displacementFilter.scale.x =
+        2 * this.direction * Math.abs(this.scroll)
     })
   }
 }
