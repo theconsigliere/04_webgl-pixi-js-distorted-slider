@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js"
+import gsap from "gsap"
 import fit from "math-fit"
 
 import img1 from "../img/1.jpg"
@@ -23,8 +24,13 @@ class Sketch {
 
     document.body.appendChild(this.app.view)
     this.margin = 50
+    this.scroll = 0
+    this.scrollTarget = 0
     this.width = (window.innerWidth - this.margin * 2) / 3
     this.height = window.innerHeight * 0.8
+    this.thumbs = []
+    this.wholeWidth = this.images.length * (this.width + this.margin)
+
     this.container = new PIXI.Container()
     this.app.stage.addChild(this.container)
 
@@ -32,6 +38,13 @@ class Sketch {
       this.images = images
       this.addSlides()
       this.render()
+      this.scrollEvent()
+    })
+  }
+
+  scrollEvent() {
+    document.addEventListener("wheel", (e) => {
+      this.scrollTarget = e.wheelDelta / 3
     })
   }
 
@@ -60,6 +73,13 @@ class Sketch {
       let container = new PIXI.Container()
       let spriteContainer = new PIXI.Container()
 
+      //this is a white rectangle that will be used as a mask
+      let mask = new PIXI.Sprite(PIXI.Texture.WHITE)
+      mask.width = this.width
+      mask.height = this.height
+
+      sprite.mask = mask
+
       // sprite.width = 100
       // sprite.height = 100
 
@@ -79,20 +99,69 @@ class Sketch {
 
       let cover = fit(image, parent)
 
+      spriteContainer.position.set(cover.left, cover.top)
+      spriteContainer.scale.set(cover.scale, cover.scale)
+
       container.x = (this.margin + this.width) * i
       container.y = this.height / 10
 
       spriteContainer.addChild(sprite)
+      // add events to PIXI
+      container.interactive = true
+      container.on("mouseover", this.mouseOver)
+      container.on("mouseout", this.mouseOut)
       container.addChild(spriteContainer)
+      container.addChild(mask)
       this.container.addChild(container)
-
-      //tweaks
+      // array of containers
+      this.thumbs.push(container)
     })
+  }
+
+  mouseOver(e) {
+    let el = e.currentTarget.children[0].children[0]
+
+    // scale images in
+    gsap.to(el.scale, {
+      x: 1.1,
+      y: 1.1,
+      duration: 1.5,
+      ease: "expo.out",
+    })
+  }
+
+  mouseOut(e) {
+    let el = e.currentTarget.children[0].children[0]
+
+    // scale images in
+    gsap.to(el.scale, {
+      x: 1,
+      y: 1,
+      duration: 1.5,
+      ease: "expo.out",
+    })
+  }
+
+  calculatePosition(scroll, position) {
+    let movement = scroll + position
+
+    //
+
+    return movement
   }
 
   render() {
     this.app.ticker.add(() => {
       this.app.renderer.render(this.container)
+
+      // lerp interpolation
+      this.scroll -= (this.scroll - this.scrollTarget) * 0.1
+      // slow it down more
+      this.scroll *= 0.9
+
+      this.thumbs.forEach((thumb, i) => {
+        thumb.position.x = this.calculatePosition(this.scroll, thumb.position.x)
+      })
     })
   }
 }
