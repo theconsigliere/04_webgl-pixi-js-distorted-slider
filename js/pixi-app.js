@@ -85,6 +85,8 @@ class Sketch {
       spriteContainer.addChild(sprite)
       container.addChild(spriteContainer)
       this.container.addChild(container)
+
+      //tweaks
     })
   }
 
